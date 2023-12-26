@@ -6,20 +6,20 @@
 # Blog: https://p3terx.com
 #=================================================
 
-name: R4S-乞丐-MOD
+name: NanoPi-R4S
 
 on:
   repository_dispatch:
   workflow_dispatch:
-  schedule:
-    - cron: 30 19 * * 4
+  # schedule:
+  #  - cron: 30 19 * * 4
   # watch:
   #   types: started
 
 env:
-  REPO_URL: https://github.com/ahapu/lede-rockchip
+  REPO_URL: https://github.com/DHDAXCW/lede-rockchip
   REPO_BRANCH: stable
-  CONFIG_FILE: configs/lean/lean_beggar.config
+  CONFIG_FILE: configs/lean/lean_own.config
   DIY_SH: scripts/lean.sh
   KMODS_IN_FIRMWARE: true
   UPLOAD_RELEASE: true
@@ -88,16 +88,15 @@ jobs:
         echo "OPENWRTROOT=$PWD" >> $GITHUB_ENV
         echo "OPENWRTROOT=$PWD" >> $GITHUB_OUTPUT
         mkdir customfeeds
-        git clone --depth=1 https://github.com/ahapu/packages customfeeds/packages
-        git clone --depth=1 https://github.com/ahapu/luci customfeeds/luci
+        git clone --depth=1 https://github.com/DHDAXCW/packages customfeeds/packages
+        git clone --depth=1 https://github.com/DHDAXCW/luci customfeeds/luci
         chmod +x ../scripts/*.sh
         ../scripts/hook-feeds.sh
-        
+    
     - name: Install Feeds
       run: |
         cd $OPENWRTROOT
         ./scripts/feeds install -a
-        
     - name: Load Custom Configuration
       run: |
         [ -e files ] && mv files $OPENWRTROOT/files
@@ -108,7 +107,7 @@ jobs:
         ../scripts/preset-clash-core.sh arm64
         ../scripts/preset-terminal-tools.sh
         make defconfig
-        
+
     - name: Download Package
       id: package
       run: |
@@ -144,7 +143,7 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "FIRMWARE=$PWD" >> $GITHUB_OUTPUT
         echo "COMPILE_STATUS=success" >> $GITHUB_OUTPUT
-        
+
     - name: Generate Firmware
       if: steps.compile.outputs.COMPILE_STATUS == 'success'
       id: generate
@@ -178,27 +177,21 @@ jobs:
         rm -rf openwrt-rockchip-armv8-rootfs.tar.gz
         rm -rf config.buildinfo
         rm -rf packages-server.zip
-        mv openwrt-rockchip-armv8-friendlyarm_nanopi-r4s-ext4-sysupgrade.img.gz beggar-friendlyarm_nanopi-r4s-ext4-sysupgrade.img.gz 
-        mv openwrt-rockchip-armv8-friendlyarm_nanopi-r4se-ext4-sysupgrade.img.gz beggar-friendlyarm_nanopi-r4se-ext4-sysupgrade.img.gz 
-        mv openwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz beggar-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
-        mv openwrt-rockchip-armv8-friendlyarm_nanopi-r4se-squashfs-sysupgrade.img.gz beggar-friendlyarm_nanopi-r4se-squashfs-sysupgrade.img.gz
+        mv openwrt-rockchip-armv8-friendlyarm_nanopi-r4s-ext4-sysupgrade.img.gz friendlyarm_nanopi-r4s-ext4-sysupgrade.img.gz 
+        mv openwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
         popd
         make checksum
-        mv bin/targets/rockchip/armv8/sha256sums bin/targets/rockchip/armv8/beggar-sha256sums
-        echo "GENERATE_STATUS=success" >> $GITHUB_OUTPUT
+        cat .config > openwrt.config
+        echo "GENERATE_STATUS=success"  >> $GITHUB_OUTPUT
         
     - name: Generate release tag
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-          echo "release_tag=$(date +"%Y.%m.%d")-Lean1" >> $GITHUB_OUTPUT
+          echo "release_tag=$(date +"%Y.%m.%d")-Lean" >> $GITHUB_OUTPUT
           echo "release_date=$(date +"%Y.%m.%d")" >> $GITHUB_OUTPUT
           touch release.txt
-          echo "后台地址：192.168.23.1
-                full   = 全插件
-                docker = 带docker
-                slim   = 精简版
-                beggar = 乞丐版" >> release.txt
+          echo "后台地址：10.0.0.1" >> release.txt
           echo "status=success" >> $GITHUB_OUTPUT
           
     - name: Upload firmware to release
@@ -207,7 +200,7 @@ jobs:
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-          name: ${{ steps.tag.outputs.release_date }} NanoPi-R4S-R4SE-linux.5.4_固件下载
+          name: ${{ steps.tag.outputs.release_date }} NanoPi-R4S-linux.5.4_固件下载
           tag_name: ${{ steps.tag.outputs.release_tag }}
           body_path: release.txt
           files: ${{ env.FIRMWARE }}/*
@@ -232,3 +225,4 @@ jobs:
       with:
          name: |
             bin-archive
+

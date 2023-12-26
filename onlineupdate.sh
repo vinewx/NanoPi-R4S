@@ -33,7 +33,7 @@ machine_choose () {
             ;;
         1)
             echo -e '\e[92m已选择R4S\e[0m'
-            machine_id=1 && repo_id='NanoPi-R4S-R4SE'
+            machine_id=1 && repo_id='NanoPi-R4S'
             ;;
         2)
             echo -e '\e[92m已选择DN2\e[0m'
@@ -45,32 +45,6 @@ machine_choose () {
             ;;
         *)
             echo -e '\e[91m非法输入,请输入数字[0-3]\e[0m' && machine_choose
-            ;;
-    esac
-}
-#版本选择
-version_choose () {
-    echo -e '\e[92m根据数字选择固件版本或退出\e[0m'
-    echo -e '0 --- Exit退出\n1 --- Docker_容器版\n2 --- Formal_正式版\n3 --- Stable_稳定版\n4 --- Lite_乞丐版'
-    read -p "请输入数字[0-4],回车确认 " version_num
-    case $version_num in
-        0)
-            echo -e '\e[91m退出脚本，升级结束\e[0m' && exit;
-            ;;
-        1)
-            echo -e '\e[92m已选择Docker_容器版\e[0m' && version_num=docker
-            ;;
-        2)
-            echo -e '\e[92m已选择Formal_正式版\e[0m' && version_num=full
-            ;;
-        3)
-            echo -e '\e[92m已选择Stable_稳定版\e[0m' && version_num=slim
-            ;;
-        4)
-            echo -e '\e[92m已选择Lite_乞丐版\e[0m' && version_num=beggar
-            ;;
-        *)
-            echo -e '\e[91m非法输入,请输入数字[0-4]\e[0m' && version_choose
             ;;
     esac
 }
@@ -115,26 +89,23 @@ repo_set () {
             ;;
     esac
     proxy_url=https://ghproxy.com
-    repo_url=https://github.com/ahapu/${repo_id}/releases
-    firmware_url=${version_num}-${firmware_id}
+    repo_url=https://github.com/vinewx/${repo_id}/releases
+    firmware_url=${firmware_id}
 }
 #寻找固件
 search_file () {
     cd ${work_path} && clean_up && days=$(($days+1))
-    #echo `(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)`
-    #wget -q ${proxy_url}/${repo_url}/download/$(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)-Lean${machine_id}/${version_num}-sha256sums
-    wget -q ${repo_url}/download/$(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)-Lean${machine_id}/${version_num}-sha256sums
+    wget -q ${repo_url}/download/$(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)-Lean${machine_id}/sha256sums
     exist_judge
 }
 #存在判断
 exist_judge () {
-    if [ -f ${version_num}-sha256sums ]; then
+    if [ -f sha256sums ]; then
         echo -e '\e[92m已找到当前日期的固件\e[0m' && echo `(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)`
         firmware_confirm
     elif [ $days == 90 ]; then
         echo -e '\e[91m未找到合适固件，脚本退出\e[0m' && exit;
     else
-        #echo -e '\e[91m当前固件不存在，寻找前一天的固件\e[0m'
         search_file
     fi
 }
@@ -144,7 +115,6 @@ firmware_confirm () {
     case $skip in
         [yY][eE][sS]|[yY])
             echo -e '\e[92m已确认，开始下载固件\e[0m'
-            #wget ${proxy_url}/${repo_url}/download/$(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)-Lean${machine_id}/${firmware_url}.gz
             wget ${repo_url}/download/$(date -d "@$(($(busybox date +%s) - 86400*($days-1)))" +%Y.%m.%d)-Lean${machine_id}/${firmware_url}.gz
             ;;
         [nN][oO]|[nN])
@@ -165,8 +135,7 @@ firmware_check () {
     elif [ -f ${firmware_url}.gz ]; then
         echo -e '\e[91m开始检查固件完整性\e[0m'
         sha256sum ${firmware_url}.gz | awk '{print $1}' > sha256sums_real
-        grep -i ${firmware_url}.gz ${version_num}-sha256sums | awk '{print $1}' > sha256sums_true
-        #if diff sha256sums_real sha256sums_true; then
+        grep -i ${firmware_url}.gz sha256sums | awk '{print $1}' > sha256sums_true
         if cmp -s sha256sums_real sha256sums_true; then
             echo -e '\e[92msha256sum校验通过\e[0m'
         else
@@ -231,24 +200,15 @@ update_firmware () {
     echo -e '\e[92mFusionWrt固件升级脚本\e[0m'
     echo -e '\e[91m---------------------\e[0m'
     img_path=/tmp && clean_up && docker_check && hd_check
-    #machine_choose && version_choose && format_choose && repo_set
-    machine_choose && version_choose && format_choose
+    machine_choose && format_choose
     mount -t tmpfs -o remount,size=100% tmpfs /tmp
     real_mem=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}') && mini_mem=1572864
     if [ $real_mem -ge $mini_mem ]; then 
         work_path=/tmp
-        #search_file && firmware_check && unzip_fireware && update_system
         repo_set && search_file && firmware_check && unzip_fireware && update_system
     else
         echo -e '\e[91m您的内存小于2G，升级将不保留配置\e[0m'
         work_path=/root
-        if [ ${version_num} == begger ]; then
-            echo -e '\e[92m固件版本为Lite_乞丐版\e[0m'
-        else
-            echo -e '\e[91m内存小，固件版本强制为Stable_稳定版\e[0m'
-            version_num=slim
-        fi
-        #search_file && firmware_check && unzip_fireware && dd_system
         repo_set && search_file && firmware_check && unzip_fireware && dd_system
     fi
 }
