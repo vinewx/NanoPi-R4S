@@ -89,7 +89,7 @@ repo_set () {
             ;;
     esac
     proxy_url=https://ghproxy.com
-    repo_url=https://github.com/vinewx/${repo_id}/releases
+    repo_url=https://github.com/vinewx/NanoPi-R4S/releases
     firmware_url=${firmware_id}
 }
 #寻找固件
