@@ -20,11 +20,6 @@
 - 修改了scripts/lean.sh管理IP
 - 用户名：root 密码：password  管理IP：10.0.0.1
 - 下载地址：https://github.com/vinewx/NanoPi-R4S/releases
-  
-### 该升级支持4G版，1G版
-```
-wget https://raw.githubusercontent.com/vinewx/NanoPi-R4S/main/onlineupdate.sh && sh onlineupdate.sh
-```
 
 ## 鸣谢
 
